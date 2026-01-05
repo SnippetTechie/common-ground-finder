@@ -1,18 +1,55 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
+import { toast } from "sonner";
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        navigate("/create-group");
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate login - navigate to create group page
-    navigate("/create-group");
+    setIsLoading(true);
+    
+    try {
+      console.log("Attempting login...");
+      await signInWithEmailAndPassword(auth, email, password);
+      toast.success("Welcome back!");
+      navigate("/create-group");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      toast.success("Welcome back!");
+      navigate("/create-group");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to login with Google");
+    }
   };
 
   return (
@@ -66,8 +103,8 @@ const Login = () => {
                 />
               </div>
 
-              <Button type="submit" variant="hero" size="lg" className="w-full">
-                Sign In
+              <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isLoading}>
+                {isLoading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
 
@@ -80,7 +117,7 @@ const Login = () => {
               </div>
             </div>
 
-            <Button variant="outline" size="lg" className="w-full gap-3">
+            <Button variant="outline" size="lg" className="w-full gap-3" onClick={handleGoogleLogin} type="button">
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"

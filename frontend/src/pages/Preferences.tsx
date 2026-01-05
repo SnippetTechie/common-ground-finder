@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,6 +8,9 @@ import { Header } from "@/components/layout/Header";
 import { InterestChip } from "@/components/preferences/InterestChip";
 import { AvailabilityGrid } from "@/components/preferences/AvailabilityGrid";
 import { ArrowRight } from "lucide-react";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { toast } from "sonner";
 
 const TOPICS = [
   "Web Technologies",
@@ -20,17 +23,47 @@ const TOPICS = [
 
 const Preferences = () => {
   const navigate = useNavigate();
-  const [selectedTopics, setSelectedTopics] = useState<string[]>(["Web Technologies", "Mobile Dev"]);
+  const [searchParams] = useSearchParams();
+  const groupId = searchParams.get("groupId");
+  const [groupTitle, setGroupTitle] = useState("Loading...");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Record<string, { am: boolean; pm: boolean }>>({
-    MON: { am: false, pm: true },
+    MON: { am: false, pm: false },
     TUE: { am: false, pm: false },
-    WED: { am: true, pm: true },
+    WED: { am: false, pm: false },
     THU: { am: false, pm: false },
-    FRI: { am: false, pm: true },
+    FRI: { am: false, pm: false },
+    SAT: { am: false, pm: false },
+    SUN: { am: false, pm: false },
   });
-  const [location, setLocation] = useState("Berlin Mitte");
+  const [location, setLocation] = useState("");
   const [travelRadius, setTravelRadius] = useState([15]);
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (!groupId) {
+       // Allow testing without groupId, but warn
+       // toast.error("No Group ID provided");
+       setGroupTitle("Demo Group");
+       return;
+    }
+    const fetchGroup = async () => {
+        try {
+            const docRef = doc(db, "groups", groupId);
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+                setGroupTitle(snap.data().title);
+            } else {
+                setGroupTitle("Unknown Group");
+            }
+        } catch (e) {
+            console.error("Error fetching group", e);
+        }
+    };
+    fetchGroup();
+  }, [groupId]);
 
   const toggleTopic = (topic: string) => {
     setSelectedTopics((prev) =>
@@ -44,14 +77,64 @@ const Preferences = () => {
     setAvailability((prev) => ({
       ...prev,
       [day]: {
-        ...prev[day],
+        ...prev[day] || { am: false, pm: false },
         [period]: !prev[day]?.[period],
       },
     }));
   };
 
-  const handleSubmit = () => {
-    navigate("/results");
+  const handleSubmit = async () => {
+    if (!auth.currentUser) {
+        toast.error("Please login first");
+        navigate("/login");
+        return;
+    }
+
+    if (!groupId) {
+        toast.error("Invalid Group ID");
+        return;
+    }
+
+    setIsLoading(true);
+    try {
+        // Convert availability to simplistic list of strings for the backend
+        const days: string[] = [];
+        const times: string[] = [];
+        
+        // Simple mapping: if ANY time in a day is selected, add the day.
+        Object.entries(availability).forEach(([day, slots]) => {
+            if (slots.am || slots.pm) {
+                days.push(day); // MON, TUE...
+                if (slots.am) times.push(`${day}-AM`);
+                if (slots.pm) times.push(`${day}-PM`);
+            }
+        });
+
+        // Backend expects 'days' and 'times' arrays. 
+        // We will just pass the raw days for now, as the simple solver handles days overlap.
+        
+        await setDoc(doc(db, "groups", groupId, "participants", auth.currentUser.uid), {
+            userId: auth.currentUser.uid,
+            email: auth.currentUser.email,
+            topics: selectedTopics,
+            location: location,
+            travelRadius: travelRadius[0],
+            availability: {
+                days: days, // ["MON", "WED"]
+                times: times // ["MON-AM", "WED-PM"]
+            },
+            notes: notes,
+            updatedAt: new Date()
+        });
+
+        toast.success("Preferences saved!");
+        navigate(`/results?groupId=${groupId}`);
+    } catch (e: any) {
+        console.error(e);
+        toast.error("Failed to save: " + e.message);
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (
@@ -64,16 +147,15 @@ const Preferences = () => {
           <div className="mb-10 animate-fade-in">
             <div className="flex items-center gap-3 mb-4">
               <span className="px-3 py-1 rounded-full border border-border bg-card text-xs font-medium text-muted-foreground">
-                Strategy
+                Participant Input
               </span>
-              <span className="text-sm text-muted-foreground">— Q3 2024</span>
             </div>
 
             <h1 className="heading-display text-4xl md:text-5xl mb-3">
-              Group <span className="heading-display-italic text-primary">Preferences</span>
+              Preferences for <span className="heading-display-italic text-primary">{groupTitle}</span>
             </h1>
             <p className="text-muted-foreground max-w-lg">
-              Help shape the next DevFest season. Share your availability and interests to align with the team's vision.
+              Help shape the event. Share your availability and interests.
             </p>
           </div>
 
@@ -84,7 +166,7 @@ const Preferences = () => {
                 <div>
                   <h2 className="font-serif text-2xl mb-2">Interests</h2>
                   <p className="text-sm text-muted-foreground">
-                    Select the topics you are most passionate about discussing this quarter.
+                    Select the topics you are most passionate about.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -106,7 +188,7 @@ const Preferences = () => {
                 <div>
                   <h2 className="font-serif text-2xl mb-2">Availability</h2>
                   <p className="text-sm text-muted-foreground">
-                    Mark your free slots. The system will auto-match common times.
+                    Mark your free slots.
                   </p>
                 </div>
                 <AvailabilityGrid
@@ -115,34 +197,6 @@ const Preferences = () => {
                 />
               </div>
             </section>
-
-            {/* Status Bar */}
-            <div className="card-elevated p-4 flex flex-wrap items-center justify-between gap-4 animate-slide-up" style={{ animationDelay: "100ms" }}>
-              <div className="flex items-center gap-3">
-                <div className="flex -space-x-2">
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="h-8 w-8 rounded-full border-2 border-card bg-muted"
-                    />
-                  ))}
-                  <div className="h-8 w-8 rounded-full border-2 border-card bg-muted flex items-center justify-center text-xs">
-                    ...
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Waiting...</p>
-                  <p className="text-xs text-muted-foreground">3/5 Joined</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button variant="outline">Save Draft</Button>
-                <Button variant="hero" className="gap-2" onClick={handleSubmit}>
-                  Submit
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
 
             {/* Location Section */}
             <section className="card-elevated p-6 md:p-8 animate-slide-up" style={{ animationDelay: "150ms" }}>
@@ -155,10 +209,11 @@ const Preferences = () => {
                 </div>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="label-uppercase text-muted-foreground">City Area</label>
+                    <label className="label-uppercase text-muted-foreground">City / Zip</label>
                     <Input
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
+                      placeholder="e.g. New York, NY"
                       className="border-t-0 border-x-0 rounded-none px-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                     />
                   </div>
@@ -175,10 +230,6 @@ const Preferences = () => {
                       step={1}
                       className="py-2"
                     />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Local</span>
-                      <span>Regional</span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -192,15 +243,23 @@ const Preferences = () => {
                 </div>
                 <div className="space-y-2">
                   <Textarea
-                    placeholder="E.g., I need wheelchair access, or prefer quiet venues..."
+                    placeholder="E.g., I need wheelchair access..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     className="min-h-[100px]"
                   />
-                  <p className="text-xs text-muted-foreground text-right">Optional</p>
                 </div>
               </div>
             </section>
+            
+            {/* Submit Bar */}
+             <div className="card-elevated p-4 flex flex-wrap items-center justify-end gap-4 animate-slide-up">
+               <Button variant="outline" disabled={isLoading}>Save Draft</Button>
+               <Button variant="hero" className="gap-2" onClick={handleSubmit} disabled={isLoading}>
+                  {isLoading ? "Saving..." : "Submit Preferences"}
+                  <ArrowRight className="h-4 w-4" />
+               </Button>
+             </div>
           </div>
         </div>
       </main>

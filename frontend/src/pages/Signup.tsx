@@ -1,19 +1,70 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { auth, db } from "@/lib/firebase";
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { toast } from "sonner";
 
 const Signup = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        navigate("/create-group");
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate signup - navigate to create group page
-    navigate("/create-group");
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        email: email,
+        createdAt: new Date(),
+      });
+      
+      toast.success("Account created successfully!");
+      navigate("/create-group");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to create account");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      await setDoc(doc(db, "users", result.user.uid), {
+        email: result.user.email,
+        lastLogin: new Date(),
+      }, { merge: true });
+
+      toast.success("Welcome!");
+      navigate("/create-group");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to sign up with Google");
+    }
   };
 
   return (
@@ -72,8 +123,8 @@ const Signup = () => {
                 />
               </div>
 
-              <Button type="submit" variant="hero" size="lg" className="w-full">
-                Create Account
+              <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isLoading}>
+                {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
 
@@ -86,7 +137,7 @@ const Signup = () => {
               </div>
             </div>
 
-            <Button variant="outline" size="lg" className="w-full gap-3">
+            <Button variant="outline" size="lg" className="w-full gap-3" onClick={handleGoogleLogin} type="button">
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
