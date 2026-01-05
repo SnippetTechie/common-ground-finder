@@ -65,12 +65,33 @@ export function solve(participants: Participant[]): Result {
     allOptions.sort((a, b) => b.score - a.score);
 
     const bestOption = allOptions[0];
-    const alternatives = allOptions.slice(1, 4);
+
+    // Mock Data Enforcements (as per user request)
+    bestOption.fairnessScore = 95;
+    bestOption.avgDistance = 1.2;
+    // Mock attendees if empty to 12
+    if (!bestOption.attendees.length) {
+        bestOption.attendees = Array(12).fill("mock-user");
+    }
+
+    const alternatives = allOptions.slice(1, 4).map((alt, index) => {
+        // Enforce distinct mock scores
+        const mockScores = [80, 75, 70];
+        const mockDistances = [2.5, 3.8, 5.1];
+
+        return {
+            ...alt,
+            fairnessScore: mockScores[index] || 60,
+            avgDistance: mockDistances[index] || 6.5,
+            title: alt.title.replace("Session", "Plan") // Rename to "Plan" as requested
+        };
+    });
 
     return {
         bestOption,
         alternatives,
         computedAt: new Date(),
-        fairnessScore: bestOption.fairnessScore
+        fairnessScore: bestOption.fairnessScore,
+        // explanation and isAiGenerated will be added by gemini.ts
     };
 }

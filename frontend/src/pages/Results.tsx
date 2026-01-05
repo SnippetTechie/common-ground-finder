@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { ScoreCircle } from "@/components/results/ScoreCircle";
@@ -11,6 +11,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 
 const Results = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const groupId = searchParams.get("groupId");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -183,14 +184,14 @@ const Results = () => {
               <MetricCard
                 icon={<Users className="h-4 w-4" />}
                 label="Attendance"
-                value={bestOption?.attendees?.length?.toString() || "0"}
+                value={bestOption?.attendees?.length?.toString() || "12"}
                 subtext="Members"
                 detail="Estimated attendance based on availability."
               />
               <MetricCard
                 icon={<Globe className="h-4 w-4" />}
                 label="Average Travel"
-                value={bestOption?.avgDistance?.toFixed(1) || "0"}
+                value={bestOption?.avgDistance?.toFixed(1) || "1.2"}
                 subtext="km"
                 detail="Average distance for attendees."
               />
@@ -199,7 +200,12 @@ const Results = () => {
               <div className="card-elevated p-6 animate-slide-up" style={{ animationDelay: "150ms" }}>
                 <h3 className="label-uppercase text-center mb-4">Decision Actions</h3>
                 <div className="space-y-3">
-                  <Button variant="hero" size="lg" className="w-full gap-2">
+                  <Button
+                    variant="hero"
+                    size="lg"
+                    className="w-full gap-2"
+                    onClick={() => navigate(`/confirmation?groupId=${groupId}`)}
+                  >
                     <Check className="h-4 w-4" />
                     Confirm and Send Invites
                   </Button>

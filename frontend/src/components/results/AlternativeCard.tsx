@@ -10,14 +10,14 @@ interface AlternativeCardProps {
   cons: string[];
 }
 
-export function AlternativeCard({ 
-  option, 
-  score, 
-  title, 
-  datetime, 
-  venue, 
-  pros, 
-  cons 
+export function AlternativeCard({
+  option,
+  score,
+  title,
+  datetime,
+  venue,
+  pros,
+  cons
 }: AlternativeCardProps) {
   return (
     <div className="group p-5 rounded-xl border border-border bg-card transition-all duration-500 hover:border-primary/20 hover:shadow-lg hover:-translate-y-1">
@@ -25,9 +25,15 @@ export function AlternativeCard({
         <span className="px-2.5 py-1 rounded-full border border-border text-xs font-medium text-muted-foreground transition-all duration-300 group-hover:border-primary/30 group-hover:bg-accent/30">
           {option}
         </span>
-        <span className="font-serif text-2xl transition-transform duration-300 group-hover:scale-110">{score}</span>
+        <div className="flex flex-col items-end">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Fairness Score</span>
+          <span className="font-serif text-3xl font-medium transition-transform duration-300 group-hover:scale-110">{score}</span>
+          <span className="text-xs font-medium mt-0.5 text-primary">
+            {score >= 90 ? "Excellent" : score >= 80 ? "Very Good" : score >= 70 ? "Good" : "Average"}
+          </span>
+        </div>
       </div>
-      
+
       <h4 className="font-serif text-xl mb-1 transition-colors duration-300 group-hover:text-primary">{title}</h4>
       <p className="text-sm text-muted-foreground mb-4">
         {datetime} • {venue}

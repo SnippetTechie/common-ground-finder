@@ -25,6 +25,7 @@ export interface Option {
     attendees: string[];   // list of userIds who can make it
     pros: string[];
     cons: string[];
+    avgDistance?: number;
 }
 
 export interface Result {
