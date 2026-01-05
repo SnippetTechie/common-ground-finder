@@ -19,37 +19,37 @@ const Results = () => {
     if (!groupId) return;
 
     const unsub = onSnapshot(doc(db, "groups", groupId, "results", "latest"), (doc) => {
-        if (doc.exists()) {
-            setResult(doc.data());
-        }
-        setLoading(false);
+      if (doc.exists()) {
+        setResult(doc.data());
+      }
+      setLoading(false);
     });
     return () => unsub();
   }, [groupId]);
 
   if (loading) {
     return (
-        <div className="min-h-screen flex items-center justify-center">
-            <p>Loading results...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading results...</p>
+      </div>
     );
   }
 
   if (!result) {
-      return (
-        <div className="min-h-screen flex flex-col bg-background">
-          <Header variant="app" />
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-             <h2 className="text-2xl font-serif">Waiting for Responses...</h2>
-             <p className="text-muted-foreground mt-2 mb-6">
-                 We need more participants to submit their preferences before we can calculate the best option.
-             </p>
-             <Button asChild>
-                 <Link to={`/preferences?groupId=${groupId}`}>Submit Your Preferences</Link>
-             </Button>
-          </div>
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header variant="app" />
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <h2 className="text-2xl font-serif">Waiting for Responses...</h2>
+          <p className="text-muted-foreground mt-2 mb-6">
+            We need more participants to submit their preferences before we can calculate the best option.
+          </p>
+          <Button asChild>
+            <Link to={`/preferences?groupId=${groupId}`}>Submit Your Preferences</Link>
+          </Button>
         </div>
-      );
+      </div>
+    );
   }
 
   const { bestOption, alternatives, fairnessScore } = result;
@@ -85,7 +85,7 @@ const Results = () => {
                 Live Calculation
               </div>
               <p className="text-xs text-muted-foreground">
-                 Fairness Score: <span className="font-medium">{(fairnessScore || 0).toFixed(2)}</span>
+                Fairness Score: <span className="font-medium">{(fairnessScore || 0)} / 100</span>
               </p>
             </div>
           </div>
@@ -100,7 +100,7 @@ const Results = () => {
                     <Check className="h-4 w-4" />
                     Recommended Plan
                   </div>
-                  <ScoreCircle score={Math.round((fairnessScore || 0) * 100)} />
+                  <ScoreCircle score={Math.round(fairnessScore || 0)} />
                 </div>
 
                 <h2 className="font-serif text-3xl md:text-4xl mb-6">{bestOption?.title || "Unknown Option"}</h2>
@@ -130,10 +130,23 @@ const Results = () => {
                   <div className="flex items-start gap-3">
                     <HelpCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <h3 className="label-uppercase text-foreground mb-2">Why This Option?</h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {bestOption?.description || "This option was selected because it maximizes group overlap."}
-                      </p>
+                      <h3 className="label-uppercase text-foreground mb-2">Why this option was recommended</h3>
+
+                      {result?.explanation ? (
+                        <>
+                          <p className="text-sm text-muted-foreground leading-relaxed italic border-l-2 border-primary/20 pl-3 py-1 mb-2">
+                            "{result.explanation}"
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-2 opacity-75">
+                            <div className="h-3 w-3 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400" />
+                            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">AI-assisted explanation</span>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {bestOption?.description || "This option balances everyone's availability and preferences."}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -145,22 +158,22 @@ const Results = () => {
                   <h3 className="font-serif text-2xl">Alternative Scenarios</h3>
                 </div>
                 {alternatives && alternatives.length > 0 ? (
-                    <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid sm:grid-cols-2 gap-4">
                     {alternatives.map((alt: any, idx: number) => (
-                        <AlternativeCard
-                            key={idx}
-                            option={`Option ${idx + 2}`}
-                            score={Math.round((alt.fairnessScore || 0) * 100)}
-                            title={alt.title}
-                            datetime={alt.timeSlot}
-                            venue={alt.location}
-                            pros={[]}
-                            cons={[]}
-                        />
+                      <AlternativeCard
+                        key={idx}
+                        option={`Alternative Plan`}
+                        score={Math.round(alt.fairnessScore || 0)}
+                        title={alt.title}
+                        datetime={alt.timeSlot}
+                        venue={alt.location}
+                        pros={[]}
+                        cons={[]}
+                      />
                     ))}
-                    </div>
+                  </div>
                 ) : (
-                    <p className="text-muted-foreground">No better alternatives found.</p>
+                  <p className="text-muted-foreground">No better alternatives found.</p>
                 )}
               </section>
             </div>
@@ -188,7 +201,7 @@ const Results = () => {
                 <div className="space-y-3">
                   <Button variant="hero" size="lg" className="w-full gap-2">
                     <Check className="h-4 w-4" />
-                    Confirm Selection
+                    Confirm and Send Invites
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground text-center mt-4">

@@ -32,4 +32,6 @@ export interface Result {
     alternatives: Option[];
     computedAt: Date;
     fairnessScore: number; // Overall system fairness
+    explanation?: string;
+    isAiGenerated?: boolean;
 }

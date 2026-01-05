@@ -31,6 +31,8 @@ db.collection('groups').where('status', 'in', ['open', 'voting']).onSnapshot(sna
 
 const activeListeners = new Set<string>();
 
+import { generateExplanation } from './gemini';
+
 function listenToParticipants(groupId: string) {
     if (activeListeners.has(groupId)) return;
     activeListeners.add(groupId);
@@ -45,6 +47,13 @@ function listenToParticipants(groupId: string) {
 
         try {
             const result = solve(participants);
+
+            // Generate explanation using Gemini
+            console.log("Generating explanation with Gemini...");
+            const explanation = await generateExplanation(result);
+
+            result.explanation = explanation;
+            result.isAiGenerated = true;
 
             await db.collection('groups').doc(groupId).collection('results').doc('latest').set({
                 ...result,
