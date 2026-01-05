@@ -1,20 +1,55 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "firebase/auth";
+import { toast } from "sonner";
 
-const Signup = () => {
+const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        navigate("/create-group");
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate signup - navigate to create group page
-    navigate("/create-group");
+    setIsLoading(true);
+    
+    try {
+      console.log("Attempting login...");
+      await signInWithEmailAndPassword(auth, email, password);
+      toast.success("Welcome back!");
+      navigate("/create-group");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      toast.success("Welcome back!");
+      navigate("/create-group");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Failed to login with Google");
+    }
   };
 
   return (
@@ -23,16 +58,16 @@ const Signup = () => {
       
       <main className="flex-1 flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md animate-fade-in">
-          <div className="card-elevated p-8">
-            <div className="text-center mb-8">
-              <h1 className="heading-display text-3xl md:text-4xl mb-2">
-                <span className="heading-display-italic">Create</span> Account
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Join your team to start coordinating better events effortlessly.
-              </p>
-            </div>
+          <div className="text-center mb-8">
+            <h1 className="heading-display text-4xl md:text-5xl mb-3">
+              <span className="font-semibold">Welcome</span> back
+            </h1>
+            <p className="text-muted-foreground">
+              Sign in to manage your planning groups.
+            </p>
+          </div>
 
+          <div className="card-elevated p-8">
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <label className="label-uppercase text-foreground">
@@ -48,9 +83,17 @@ const Signup = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="label-uppercase text-foreground">
-                  Password
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="label-uppercase text-foreground">
+                    Password
+                  </label>
+                  <Link 
+                    to="#" 
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <Input
                   type="password"
                   placeholder="••••••••"
@@ -60,21 +103,8 @@ const Signup = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="label-uppercase text-foreground">
-                  Confirm Password
-                </label>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <Button type="submit" variant="hero" size="lg" className="w-full">
-                Create Account
+              <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isLoading}>
+                {isLoading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
 
@@ -87,7 +117,7 @@ const Signup = () => {
               </div>
             </div>
 
-            <Button variant="outline" size="lg" className="w-full gap-3">
+            <Button variant="outline" size="lg" className="w-full gap-3" onClick={handleGoogleLogin} type="button">
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
@@ -108,20 +138,20 @@ const Signup = () => {
               </svg>
               Google
             </Button>
-
-            <p className="text-center text-sm text-muted-foreground mt-6">
-              Already have an account?{" "}
-              <Link to="/login" className="text-foreground font-medium hover:text-primary transition-colors">
-                Sign In
-              </Link>
-            </p>
           </div>
+
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            Don't have an account?{" "}
+            <Link to="/signup" className="text-foreground font-medium hover:text-primary transition-colors">
+              Sign up
+            </Link>
+          </p>
         </div>
       </main>
 
-      <Footer variant="minimal" />
+      <Footer />
     </div>
   );
 };
 
-export default Signup;
+export default Login;

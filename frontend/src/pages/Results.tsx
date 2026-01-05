@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -6,8 +7,54 @@ import { ScoreCircle } from "@/components/results/ScoreCircle";
 import { AlternativeCard } from "@/components/results/AlternativeCard";
 import { MetricCard } from "@/components/results/MetricCard";
 import { Calendar, MapPin, HelpCircle, Users, Globe, Check, RefreshCw, ArrowUpRight } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
 
 const Results = () => {
+  const [searchParams] = useSearchParams();
+  const groupId = searchParams.get("groupId");
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!groupId) return;
+
+    const unsub = onSnapshot(doc(db, "groups", groupId, "results", "latest"), (doc) => {
+        if (doc.exists()) {
+            setResult(doc.data());
+        }
+        setLoading(false);
+    });
+    return () => unsub();
+  }, [groupId]);
+
+  if (loading) {
+    return (
+        <div className="min-h-screen flex items-center justify-center">
+            <p>Loading results...</p>
+        </div>
+    );
+  }
+
+  if (!result) {
+      return (
+        <div className="min-h-screen flex flex-col bg-background">
+          <Header variant="app" />
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+             <h2 className="text-2xl font-serif">Waiting for Responses...</h2>
+             <p className="text-muted-foreground mt-2 mb-6">
+                 We need more participants to submit their preferences before we can calculate the best option.
+             </p>
+             <Button asChild>
+                 <Link to={`/preferences?groupId=${groupId}`}>Submit Your Preferences</Link>
+             </Button>
+          </div>
+        </div>
+      );
+  }
+
+  const { bestOption, alternatives, fairnessScore } = result;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header variant="app" />
@@ -39,7 +86,7 @@ const Results = () => {
                 Live Calculation
               </div>
               <p className="text-xs text-muted-foreground">
-                ID: 402-XC-99 • <span className="font-medium">1.24s</span> process time
+                 Fairness Score: <span className="font-medium">{(fairnessScore || 0).toFixed(2)}</span>
               </p>
             </div>
           </div>
@@ -54,10 +101,10 @@ const Results = () => {
                     <Check className="h-4 w-4" />
                     Recommended Plan
                   </div>
-                  <ScoreCircle score={94} />
+                  <ScoreCircle score={Math.round((fairnessScore || 0) * 100)} />
                 </div>
 
-                <h2 className="font-serif text-3xl md:text-4xl mb-6">Cloud Hero Workshop</h2>
+                <h2 className="font-serif text-3xl md:text-4xl mb-6">{bestOption?.title || "Unknown Option"}</h2>
 
                 <div className="grid sm:grid-cols-2 gap-4 mb-6">
                   <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
@@ -65,18 +112,17 @@ const Results = () => {
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="label-uppercase text-muted-foreground">Date & Time</span>
                     </div>
-                    <p className="font-medium">Saturday, Nov 12</p>
-                    <p className="text-sm text-muted-foreground">14:00 - 17:00 (3 hours)</p>
+                    <p className="font-medium">{bestOption?.timeSlot || "TBD"}</p>
+                    <p className="text-sm text-muted-foreground">Duration: {bestOption?.duration || 2} hours</p>
                   </div>
                   <div className="p-4 rounded-lg bg-muted/30 border border-border/50">
                     <div className="flex items-center gap-2 mb-2">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span className="label-uppercase text-muted-foreground">Venue</span>
                     </div>
-                    <p className="font-medium">Downtown Co-working Hub</p>
+                    <p className="font-medium">{bestOption?.location || "TBD"}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="px-2 py-0.5 rounded text-xs bg-card border border-border">Room 4B</span>
-                      <span className="text-sm text-muted-foreground">Capacity: 40</span>
+                      <span className="px-2 py-0.5 rounded text-xs bg-card border border-border">Optimal Center</span>
                     </div>
                   </div>
                 </div>
@@ -87,7 +133,7 @@ const Results = () => {
                     <div>
                       <h3 className="label-uppercase text-foreground mb-2">Why This Option?</h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">
-                        This selection maximizes attendance probability (<span className="font-medium text-foreground">n=18</span>) while maintaining the lowest location variance (<span className="font-medium text-foreground">4km</span>). The topic "Cloud Architecture" aligns with the interests of 85% of available members for this specific time slot, creating the most equitable outcome.
+                        {bestOption?.description || "This option was selected because it maximizes group overlap."}
                       </p>
                     </div>
                   </div>
@@ -98,31 +144,25 @@ const Results = () => {
               <section className="animate-slide-up" style={{ animationDelay: "100ms" }}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-serif text-2xl">Alternative Scenarios</h3>
-                  <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
-                    View Full Report
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Button>
                 </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <AlternativeCard
-                    option="Option B"
-                    score={88}
-                    title="Friday Night Social"
-                    datetime="Fri, Nov 11 @ 19:00"
-                    venue="The Local Pub"
-                    pros={["Higher topic interest (+5%)"]}
-                    cons={["Location variance (+12km)"]}
-                  />
-                  <AlternativeCard
-                    option="Option C"
-                    score={82}
-                    title="Sunday Deep Dive"
-                    datetime="Sun, Nov 13 @ 10:00"
-                    venue="Online"
-                    pros={["Perfect fairness (0km)"]}
-                    cons={["Lowest availability (12/20)"]}
-                  />
-                </div>
+                {alternatives && alternatives.length > 0 ? (
+                    <div className="grid sm:grid-cols-2 gap-4">
+                    {alternatives.map((alt: any, idx: number) => (
+                        <AlternativeCard
+                            key={idx}
+                            option={`Option ${idx + 2}`}
+                            score={Math.round((alt.fairnessScore || 0) * 100)}
+                            title={alt.title}
+                            datetime={alt.timeSlot}
+                            venue={alt.location}
+                            pros={[]}
+                            cons={[]}
+                        />
+                    ))}
+                    </div>
+                ) : (
+                    <p className="text-muted-foreground">No better alternatives found.</p>
+                )}
               </section>
             </div>
 
@@ -130,17 +170,17 @@ const Results = () => {
             <div className="space-y-6">
               <MetricCard
                 icon={<Users className="h-4 w-4" />}
-                label="Availability"
-                value="18"
-                subtext="/ 20 Members"
-                detail="90% of core team is available."
+                label="Attendance"
+                value={bestOption?.attendees?.length?.toString() || "0"}
+                subtext="Members"
+                detail="Estimated attendance based on availability."
               />
               <MetricCard
                 icon={<Globe className="h-4 w-4" />}
-                label="Travel Delta"
-                value="4.2"
+                label="Average Travel"
+                value={bestOption?.avgDistance?.toFixed(1) || "0"}
                 subtext="km"
-                detail="Standard deviation from central hub is low."
+                detail="Average distance for attendees."
               />
 
               {/* Decision Actions */}
@@ -151,13 +191,9 @@ const Results = () => {
                     <Check className="h-4 w-4" />
                     Confirm Selection
                   </Button>
-                  <Button variant="outline" size="lg" className="w-full gap-2">
-                    <RefreshCw className="h-4 w-4" />
-                    Regenerate Options
-                  </Button>
                 </div>
                 <p className="text-xs text-muted-foreground text-center mt-4">
-                  GDG Event Planner AI v2.4
+                  Common Ground Finder v1.0
                 </p>
               </div>
             </div>

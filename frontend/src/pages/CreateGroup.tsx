@@ -1,23 +1,65 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Copy, Check, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { db, auth } from "@/lib/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { toast } from "sonner";
 
 const CreateGroup = () => {
   const [groupName, setGroupName] = useState("");
   const [description, setDescription] = useState("");
   const [isCreated, setIsCreated] = useState(false);
   const [copied, setCopied] = useState(false);
-  
-  const inviteLink = "https://common-ground.app/join/Q3-DevFest-2024";
+  const [inviteLink, setInviteLink] = useState("");
+  const [groupId, setGroupId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Protect route
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        toast.error("You must be logged in to create a group");
+        navigate("/login");
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsCreated(true);
+    if (!groupName.trim()) return;
+    
+    setIsLoading(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("Not authenticated");
+
+      const docRef = await addDoc(collection(db, "groups"), {
+        title: groupName,
+        description: description,
+        createdBy: user.uid,
+        createdAt: serverTimestamp(),
+        status: "open" // open, voting, locked
+      });
+
+      setGroupId(docRef.id);
+      const link = `${window.location.origin}/join/${docRef.id}`;
+      setInviteLink(link);
+      setIsCreated(true);
+      toast.success("Group created!");
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Failed to create group");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = () => {
@@ -72,9 +114,9 @@ const CreateGroup = () => {
                   />
                 </div>
 
-                <Button type="submit" variant="hero" size="xl" className="w-full gap-2">
-                  Create Group
-                  <ArrowRight className="h-4 w-4" />
+                <Button type="submit" variant="hero" size="xl" className="w-full gap-2" disabled={isLoading}>
+                  {isLoading ? "Creating..." : "Create Group"}
+                  {!isLoading && <ArrowRight className="h-4 w-4" />}
                 </Button>
               </form>
             ) : (
@@ -116,13 +158,13 @@ const CreateGroup = () => {
 
                 <div className="pt-4 border-t border-border space-y-3">
                   <Button variant="hero" size="lg" className="w-full gap-2" asChild>
-                    <Link to="/preferences">
+                    <Link to={`/preferences?groupId=${groupId}`}>
                       Add Your Preferences
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>
                   <Button variant="ghost" size="lg" className="w-full" asChild>
-                    <Link to="/results">
+                    <Link to={`/results?groupId=${groupId}`}>
                       View Results Dashboard
                     </Link>
                   </Button>
