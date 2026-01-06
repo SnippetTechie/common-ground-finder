@@ -2,7 +2,7 @@
     "name": "common-ground-backend",
     "version": "1.0.0",
     "description": "Backend decision engine for Common Ground Finder",
-    "main": "dist/index.js",
+    "main": "dist/src/index.js",
     "scripts": {
         "start": "ts-node src/index.ts",
         "build": "tsc"

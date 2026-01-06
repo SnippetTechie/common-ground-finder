@@ -1,3 +1,9 @@
+/**
+ * LEGACY / LOCAL DAEMON
+ * 
+ * This file is used for local testing or running as a background process (daemon).
+ * For Vercel deployment, we use the Serverless API in `api/index.ts`.
+ */
 import * as admin from 'firebase-admin';
 import * as path from 'path';
 import { solve } from './solver';
