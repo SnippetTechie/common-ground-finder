@@ -51,7 +51,7 @@ const Index = () => {
               </div>
 
               {/* Right: Action Card */}
-              <div className="card-elevated p-8 animate-slide-up lg:ml-auto lg:max-w-md w-full hover:shadow-xl transition-all duration-500">
+              <div className="card-elevated p-8 animate-slide-up lg:ml-auto lg:max-w-md w-full hover:shadow-xl transition-all duration-500 lg:-mt-12">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="font-serif text-2xl">Start a Decision</h2>
                   <Calendar className="h-5 w-5 text-muted-foreground transition-transform duration-300 hover:scale-110 hover:text-primary" />
