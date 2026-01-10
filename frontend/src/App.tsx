@@ -28,6 +28,7 @@ const PageTransition = ({ children }: { children: React.ReactNode }) => (
 );
 
 import Confirmation from "./pages/Confirmation";
+import JoinGroup from "./pages/JoinGroup";
 
 const AnimatedRoutes = () => {
   const location = useLocation();
@@ -42,6 +43,7 @@ const AnimatedRoutes = () => {
         <Route path="/preferences" element={<PageTransition><Preferences /></PageTransition>} />
         <Route path="/results" element={<PageTransition><Results /></PageTransition>} />
         <Route path="/confirmation" element={<PageTransition><Confirmation /></PageTransition>} />
+        <Route path="/join-group" element={<PageTransition><JoinGroup /></PageTransition>} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<PageTransition><NotFound /></PageTransition>} />
       </Routes>

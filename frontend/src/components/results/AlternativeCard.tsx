@@ -8,6 +8,7 @@ interface AlternativeCardProps {
   venue: string;
   pros: string[];
   cons: string[];
+  tradeoffLabel?: string;
 }
 
 export function AlternativeCard({
@@ -17,7 +18,8 @@ export function AlternativeCard({
   datetime,
   venue,
   pros,
-  cons
+  cons,
+  tradeoffLabel
 }: AlternativeCardProps) {
   return (
     <div className="group p-5 rounded-xl border border-border bg-card transition-all duration-500 hover:border-primary/20 hover:shadow-lg hover:-translate-y-1">
@@ -26,6 +28,11 @@ export function AlternativeCard({
           {option}
         </span>
         <div className="flex flex-col items-end">
+          {tradeoffLabel && (
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80 mb-2 px-2 py-0.5 rounded-full bg-muted/60">
+              {tradeoffLabel}
+            </span>
+          )}
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">Fairness Score</span>
           <span className="font-serif text-3xl font-medium transition-transform duration-300 group-hover:scale-110">{score}</span>
           <span className="text-xs font-medium mt-0.5 text-primary">
